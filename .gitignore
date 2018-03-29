@@ -1,0 +1,23 @@
+# Mac
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log
+.node-version
+
+# Intellij
+.idea/
+*.iml
+
+
+dist/
+yarn-error.log
+
+# HomeBridge
+config.json
+config.test.json
+persist/
+
+
+.AppleDouble
