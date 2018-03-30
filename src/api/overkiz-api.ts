@@ -39,6 +39,14 @@ export class OverkizApi {
         return this.execute('apply', body);
     }
 
+    cancelCommand(execId: string): Promise<any> {
+        return this.backendCall({
+            method: 'DELETE',
+            url: this.urlForQuery(`/exec/current/setup/${execId}`),
+            json: true
+        });
+    }
+
     execute(oid: string, body: any): Promise<any> {
         return this.backendCall({
             method: 'POST',
@@ -51,9 +59,9 @@ export class OverkizApi {
                 this.registerListener();
             }
 
-            return Promise.resolve({state: ExecutionState.INITIALIZED, response: response});
+            return {state: ExecutionState.INITIALIZED, response: response};
         }).catch(error => {
-            return Promise.reject({state: ExecutionState.INITIALIZED, error: error});
+            return {state: ExecutionState.INITIALIZED, error: error};
         });
     }
 
@@ -174,14 +182,6 @@ export class OverkizApi {
         return this.backendCall({
             method: 'GET',
             url: this.urlForQuery(`/setup/devices/${encodeURIComponent(deviceUrl)}/states/${encodeURIComponent(state)}`),
-            json: true
-        });
-    }
-
-    private cancelCommand(execId: string): Promise<any> {
-        return this.backendCall({
-            method: 'DELETE',
-            url: this.urlForQuery(`/exec/current/setup/${execId}`),
             json: true
         });
     }

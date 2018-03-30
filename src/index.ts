@@ -1,5 +1,6 @@
-import { ScenarioAccessory } from './accessories/scenario-accessory';
+import { ScenarioAccessory } from './accessories/ScenarioAccessory';
 import { OverkizApi } from './api/overkiz-api';
+import { knownAccessories } from './constants/known-accessories';
 import { DeviceState } from './model/device-state.model';
 import { Device } from './model/device.model';
 import { TahomaConfig } from './model/tahoma-config.model';
@@ -85,46 +86,33 @@ class TahomaPlatform {
     private loadDevices(): Promise<Array<Device>> {
         return this.api.getDevices()
             .then(devices => {
-                let devicesList: Array<Device> = [];
-                for (let device of devices) {
-                    let accessory = null;
+                return Promise.all(devices.map(device => {
                     const protocol = device.controllableName.split(':').shift();
 
-                    //TODO check if DeviceAccessory is available
-                    if (true) {
+                    if (knownAccessories.indexOf(device.uiClass) !== -1) {
                         if (this.exclusions.indexOf(protocol) === -1 && this.exclusions.indexOf(device.label) === -1) {
-                            if (device.uiClass === 'RollerShutter') {
-                                import(`./accessories/${device.uiClass}`).then((clazz) => {
-                                    accessory = clazz.default(this.logger, this.config, device);
-                                });
-                            }
-                            //TODO create accessory
-                            // accessory = {
-                            //     controllableName: '',
-                            //     deviceURL: '',
-                            //     label: '',
-                            //     states: [],
-                            //     uiClass: '',
-                            //     onStateUpdate: (name: string, value: string) => {
-                            //     },
-                            //     getServices: (): any[] => {
-                            //         return [];
-                            //     },
-                            // };
+                            return import(`./accessories/${device.uiClass}Accessory`)
+                                .then((clazz) => {
+                                    const accessory = new clazz.default(this.logger, this.api, device, this.config, Service, Characteristic);
 
-                            // if (device.states != null) {
-                            //     for (let state of device.states) {
-                            //         accessory.onStateUpdate(state.name, state.value);
-                            //     }
-                            // }
-                            devicesList.push(accessory);
+                                    if (device.states != null) {
+                                        for (let state of device.states) {
+                                            // accessory.onStateUpdate(state.name, state.value);
+                                        }
+                                    }
+
+                                    return accessory;
+                                });
+                        } else {
+                            this.logger.info(`Device type ${device.uiClass} is excluded`);
                         }
+                    } else {
+                        this.logger.info(`Device type ${device.uiClass} unknown`);
                     }
-                    // else {
-                    //     this.logger.info(`Device type ${device.uiClass} unknown`);
-                    // }
-                }
-                return Promise.resolve(devicesList);
+                })).then(devices => {
+                    return [].concat(...devices
+                        .filter((device: Device) => device !== undefined));
+                });
             });
     }
 
@@ -140,7 +128,7 @@ class TahomaPlatform {
                     }
                 }
 
-                return Promise.resolve(scenarioList);
+                return scenarioList;
             });
     }
 }

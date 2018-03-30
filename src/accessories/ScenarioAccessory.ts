@@ -1,3 +1,4 @@
+import { OverkizApi } from '../api/overkiz-api';
 import { ExecutionState } from '../constants/execution-state';
 import { Logger } from '../utils/logger';
 
@@ -13,7 +14,7 @@ export class ScenarioAccessory {
     private lastExecId: string;
 
 
-    constructor(name: string, oid: string, logger: Logger, api: any, hapService: any, hapCharacteristic: any) {
+    constructor(name: string, oid: string, logger: Logger, api: OverkizApi, hapService: HAPNodeJS.Service, hapCharacteristic: HAPNodeJS.Characteristic) {
         this.oid = oid;
         this.name = name;
         this.logger = logger;
@@ -26,7 +27,7 @@ export class ScenarioAccessory {
         return this.services;
     }
 
-    private initialize(name: string, hapService: any, hapCharacteristic: any): void {
+    private initialize(name: string, hapService: HAPNodeJS.Service, hapCharacteristic: HAPNodeJS.Characteristic): void {
         const service = new hapService.Switch(name);
         this.state = service.getCharacteristic(hapCharacteristic.On);
         this.state.on('set', (value: any, callback: (error: any) => void) => this.executeScenario(value, callback));
@@ -36,21 +37,21 @@ export class ScenarioAccessory {
 
     private executeScenario(value: any, callback: (error?: any) => void): void {
         if (this.isCommandInProgress()) {
-            this.api.cancelCommand(this.lastExecId, () => {
-            });
+            this.api.cancelCommand(this.lastExecId);
         }
 
         if (value) {
-            this.api.execute(this.oid, null, (status: any, error: any, data: any) => {
-                if (!error) {
+            this.api.execute(this.oid, null)
+                .then((response: any) => {
                     if (status === ExecutionState.INITIALIZED) {
-                        this.lastExecId = data.execId;
+                        this.lastExecId = response.execId;
                     }
                     if (status === ExecutionState.FAILED || status === ExecutionState.COMPLETED) {
-                        this.logger.info(`[Scenario] ${this.name} ${error === null ? status : error}`);
+                        this.logger.info(`[Scenario] ${this.name} ${response}`);
                         this.state.updateValue(0);
                     }
-                }
+                }).catch((error: any) => {
+                this.logger.info(`[Scenario] ${this.name} ${error}`);
             });
         }
         callback();
