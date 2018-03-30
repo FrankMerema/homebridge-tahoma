@@ -9,6 +9,5 @@ export default class RollerShutterClass extends AwningClass {
     constructor(logger: Logger, api: OverkizApi, device: Device, config: TahomaConfig,
                 service: HAPNodeJS.Service, characteristic: HAPNodeJS.Characteristic) {
         super(logger, api, device, config, service, characteristic);
-        console.log('YO');
     }
 }

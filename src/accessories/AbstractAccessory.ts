@@ -1,6 +1,7 @@
 import { OverkizApi } from '../api/overkiz-api';
 import { State } from '../constants/accessory-state';
 import { Device } from '../model/device.model';
+import { Operation } from '../model/operation.model';
 import { Logger } from '../utils/logger';
 
 export class AbstractAccessory {
@@ -10,7 +11,9 @@ export class AbstractAccessory {
     device: Device;
 
     name: string;
-    services: any[];
+    services: Array<HAPNodeJS.Service> = [];
+
+    lastExecId: string;
 
     constructor(logger: Logger, api: OverkizApi, device: Device,
                 service: HAPNodeJS.Service, characteristic: HAPNodeJS.Characteristic) {
@@ -44,7 +47,7 @@ export class AbstractAccessory {
         this.services.push(informationService);
     }
 
-    getServices(): Array<any> {
+    getServices(): Array<HAPNodeJS.Service> {
         return this.services;
     }
 
@@ -56,20 +59,40 @@ export class AbstractAccessory {
          **/
     }
 
-    executeCommand(commands: any, callback: () => void): void {
+    executeCommand(commands: any): Promise<any> {
         let cmdName = '';
 
         if (Array.isArray(commands)) {
             cmdName = 'Bulk commands';
         } else {
-            console.log(`[${this.name}] ${commands.name} ${JSON.stringify(commands.parameters)}`);
             cmdName = commands.name;
             commands = [commands];
         }
 
         if (this.isCommandInProgress()) {
-            // this.api.cancelCommand(this.lastExecId);
+            this.api.cancelCommand(this.lastExecId);
         }
+
+        const label = `${cmdName} ${this.name}`;
+        const operation: Operation = {
+            label: label,
+            actions: [{
+                deviceUrl: this.device.deviceURL,
+                commands: commands
+            }]
+        };
+
+        return this.api.executeCommand(operation)
+            .then(data => {
+                this.lastExecId = data.response.execId;
+
+                return data;
+            })
+            .catch(error => {
+                this.logger.info(`[${this.name}] ${cmdName}: ${error}`);
+
+                return error;
+            });
     }
 
     _look_state(stateName: string): string {
@@ -84,6 +107,6 @@ export class AbstractAccessory {
     }
 
     isCommandInProgress(): boolean {
-        return true;//(this.lastExecId in this.api.executionCallback)
+        return (this.lastExecId in this.api.executionCallback);
     }
 }

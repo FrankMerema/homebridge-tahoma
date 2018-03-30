@@ -6,7 +6,4 @@ export interface Device {
     label: string;
     states: Array<DeviceState>;
     uiClass: string;
-
-    onStateUpdate: (name: string, value: string) => void;
-    getServices: () => any[];
 }

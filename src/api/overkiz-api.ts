@@ -1,7 +1,9 @@
 import { OptionsWithUri, OptionsWithUrl } from 'request';
 import { ExecutionState } from '../constants/execution-state';
 import { ServerChoice } from '../constants/server-choice';
+import { Command } from '../model/command.model';
 import { Device } from '../model/device.model';
+import { Operation } from '../model/operation.model';
 import { Scenario } from '../model/scenario.model';
 import { TahomaConfig } from '../model/tahoma-config.model';
 import { Logger } from '../utils/logger';
@@ -26,8 +28,8 @@ export class OverkizApi {
 
     private isLoggedIn: boolean = false;
     private listenerId: string = null;
-    private executionCallback: Array<any> = [];
-    private platformAccessories: Array<any> = [];
+
+    executionCallback: Array<any> = [];
     private stateChangedEventListener: any = null;
 
     constructor(logger: Logger, config: TahomaConfig) {
@@ -35,7 +37,7 @@ export class OverkizApi {
         this.initialize(config);
     }
 
-    executeCommand(body: any): Promise<any> {
+    executeCommand(body: Operation | Command): Promise<any> {
         return this.execute('apply', body);
     }
 
@@ -47,7 +49,7 @@ export class OverkizApi {
         });
     }
 
-    execute(oid: string, body: any): Promise<any> {
+    execute(oid: string, body: Operation | Command): Promise<{ state: ExecutionState, response?: any, error?: any }> {
         return this.backendCall({
             method: 'POST',
             url: this.urlForQuery(`/exec/${oid}`),
@@ -61,7 +63,7 @@ export class OverkizApi {
 
             return {state: ExecutionState.INITIALIZED, response: response};
         }).catch(error => {
-            return {state: ExecutionState.INITIALIZED, error: error};
+            return {state: ExecutionState.FAILED, error: error};
         });
     }
 
@@ -97,16 +99,14 @@ export class OverkizApi {
     }
 
     private urlForQuery(query: string): string {
-        // return 'http://localhost:8080/api/success';
         return `https://${this.service}/enduser-mobile-web/enduserAPI${query}`;
-        // return `https://localhost:8001/enduser-mobile-web/enduserAPI${query}`;
     }
 
     private backendCall(options: RequestOptionsMethodRequired): Promise<any> {
         return this.requestWithLogin(options)
             .catch(error => {
                 this.logger.error(`Error ${error.statusCode}: ${error}`);
-                return Promise.reject(error);
+                return error;
             });
     }
 
@@ -138,7 +138,7 @@ export class OverkizApi {
                     return this.requestWithLogin(requestOptions);
                 } else {
                     this.logger.error(`There is a problem connecting to ${this.service}: ${error}`);
-                    return Promise.reject(error);
+                    return error;
                 }
             });
         }

@@ -1,8 +1,8 @@
+import { AbstractAccessory } from './accessories/AbstractAccessory';
 import { ScenarioAccessory } from './accessories/ScenarioAccessory';
 import { OverkizApi } from './api/overkiz-api';
 import { knownAccessories } from './constants/known-accessories';
 import { DeviceState } from './model/device-state.model';
-import { Device } from './model/device.model';
 import { TahomaConfig } from './model/tahoma-config.model';
 import { Logger } from './utils/logger';
 
@@ -30,7 +30,11 @@ class TahomaPlatform {
     constructor(log: any, config: TahomaConfig) {
         this.logger = new Logger(log);
         this.config = config;
-        this.initialize(config);
+
+        this.exposeScenarios = config.exposeScenarios || false;
+        this.exclusions = config.exclude || [];
+        this.exclusions.push('internal'); // Exclude internal devices
+        this.api = new OverkizApi(this.logger, config);
     }
 
     accessories(callback: (accessories: any[]) => void): void {
@@ -43,9 +47,11 @@ class TahomaPlatform {
                         this.loadScenarios()
                             .then(scenarios => {
                                 this.platformAccessories.push(...scenarios);
+                                callback(this.platformAccessories);
                             });
+                    } else {
+                        callback(this.platformAccessories);
                     }
-                    callback(this.platformAccessories);
                 });
         } else {
             callback(this.platformAccessories);
@@ -59,13 +65,6 @@ class TahomaPlatform {
                 accessory.onStateUpdate(state.name, state.value);
             }
         }
-    }
-
-    private initialize(config: TahomaConfig): void {
-        this.exposeScenarios = config.exposeScenarios || false;
-        this.exclusions = config.exclude || [];
-        this.exclusions.push('internal'); // Exclude internal devices
-        this.api = new OverkizApi(this.logger, config);
     }
 
     private findAccessory(deviceUrl: string): any {
@@ -83,7 +82,7 @@ class TahomaPlatform {
         return null;
     }
 
-    private loadDevices(): Promise<Array<Device>> {
+    private loadDevices(): Promise<Array<AbstractAccessory>> {
         return this.api.getDevices()
             .then(devices => {
                 return Promise.all(devices.map(device => {
@@ -109,16 +108,17 @@ class TahomaPlatform {
                     } else {
                         this.logger.info(`Device type ${device.uiClass} unknown`);
                     }
-                })).then(devices => {
-                    return [].concat(...devices
-                        .filter((device: Device) => device !== undefined));
+                })).then(accessories => {
+                    return [].concat(...accessories
+                        .filter(accessory => accessory !== undefined));
                 });
             });
     }
 
-    private loadScenarios(): Promise<any> {
+    private loadScenarios(): Promise<Array<ScenarioAccessory>> {
         return this.api.getActionGroups()
             .then(scenarios => {
+                console.log(scenarios);
                 const scenarioList = [];
 
                 for (let scenario of scenarios) {

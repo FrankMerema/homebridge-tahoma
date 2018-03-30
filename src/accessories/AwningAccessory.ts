@@ -13,6 +13,8 @@ export class AwningClass extends AbstractAccessory {
 
         this.config = config;
 
-        console.log('Yo 2');
+        // this.executeCommand({}, () => {
+        //
+        // });
     }
 }
