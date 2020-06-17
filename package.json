@@ -14,7 +14,7 @@
     },
     "devDependencies": {
         "@types/node": "14.0.13",
-        "@types/request": "2.47.0"
+        "@types/request": "2.48.5"
     },
     "dependencies": {
         "request": "^2.85.0",
